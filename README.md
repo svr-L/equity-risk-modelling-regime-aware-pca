@@ -39,10 +39,8 @@ The notebook contains **two different layers of evidence**, and they should be r
 
 Based on the executed outputs embedded in the notebook:
 
-* **Global PCA reconstruction**: $R^2\_{total,test} 
-* pprox 0.662$
-* **Piecewise PCA reconstruction**: $R^2\_{total,test} 
-* pprox 0.645$
+* **Global PCA reconstruction** ($R^2\_{total,test}): about **0.662$**
+* **Piecewise PCA reconstruction** ($R^2\_{total,test}): about **0.645$**
 * **Global mean OOS Gaussian NLL**: about **-68.547**
 * **Piecewise percentile mean OOS Gaussian NLL**: about **-67.980**
 * **Static HMM-mixture mean OOS Gaussian NLL**: about **-68.459**
