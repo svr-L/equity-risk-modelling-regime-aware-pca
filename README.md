@@ -84,7 +84,7 @@ That is still strong and fully publishable on GitHub.
 ├── README.md
 ├── requirements.txt
 ├── LICENSE
-└── equity\_risk\_modelling\_regime\_aware\_pca\_v1.ipynb
+└── equity_risk_modelling_regime_aware_pca_v1.ipynb
 ```
 
 ## Methodology
@@ -153,7 +153,7 @@ jupyter notebook
 Then open:
 
 ```text
-us\_tech\_risk\_modelling\_regime\_aware\_pca\_hmm.ipynb
+equity_risk_modelling_regime_aware_pca_v1.ipynb
 ```
 
 ## Limitations
