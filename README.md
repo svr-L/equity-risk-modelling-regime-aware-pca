@@ -1,151 +1,182 @@
 # Equity Risk Modelling with Regime-Aware PCA
 
-A research notebook on **out-of-sample covariance / density forecasting** for a panel of **24 US large-cap equities**.
+A research repository on **out-of-sample covariance / density forecasting** for a panel of **24 US large-cap equities**.
 
 ## Project summary
 
-This repository studies whether a **regime-aware covariance challenger** can improve on a static low-rank PCA risk model when market stress is proxied by a **past-looking VIX-derived state variable**.
+This project studies whether **regime-aware covariance forecasts** can improve on a static low-rank PCA baseline when market stress is proxied by an implied-volatility state variable.
 
 The workflow compares:
 
-- a **global / static PCA benchmark** with shrinkage covariance;
-- an **HMM-informed piecewise PCA baseline** built from low / mid / high stress buckets;
-- a **2-state Gaussian HMM calm/stress mixture** that blends covariance forecasts through time using filtered stress probabilities;
-- an auxiliary **vol-mix / correlation-fixed** challenger.
+- a **global / static PCA risk model**
+- an **HMM-informed piecewise PCA baseline** built from low / mid / high stress buckets
+- a **2-state Gaussian HMM mixture** that blends calm and stress covariance forecasts using lagged filtered probabilities
+- an auxiliary **Vol-mix / Corr-fixed** challenger
 
-The main objective is **risk modelling**, not return prediction. The key score is **out-of-sample Gaussian negative log-likelihood (NLL)**.
+The main objective is **risk modelling**, not return prediction: the key score is **out-of-sample Gaussian negative log-likelihood (NLL)**.
 
-## Current notebook snapshot
+## Current specification
 
-The current executed notebook (`LMCS_Saverio_Lauriola_Equity_Risk_Modelling_GitReady.ipynb`) uses:
+- **Universe:** 24 US large-cap equities
+- **Regime proxy:** **VIX**-based state variable
+- **State model:** 2-state Gaussian HMM on the scalar stress indicator \(z_t\)
+- **Risk model:** low-rank PCA / shrinkage covariance
+- **Primary metric:** mean OOS Gaussian NLL
+- **Secondary metric:** PCA reconstruction \(R^2\)
 
-- **24 US large-cap equities**
-- **VIX (`^VIX`)** as the regime proxy
-- requested history from **2010 onward**
-- an effective common-sample returns history that begins later because the analysis uses the **intersection of available histories across the whole panel**
-- a train / test split ending training on **2021-12-31** and starting test on **2022-01-01**
+## Sample coverage
 
-### Static out-of-sample results
+The notebook requests data from **2010-01-01** onward, but the effective common return sample is shorter because the analysis uses the intersection of available histories across all names plus the IV proxy.
 
-On the observed test set, the main static OOS ranking is:
+For the current executed **V2** run:
 
-- **HMM Mixture (calm/stress):** mean NLL ≈ **-175.978**
-- **Vol-mix Corr-fixed:** mean NLL ≈ **-175.655**
-- **Global (static):** mean NLL ≈ **-175.607**
-- **Piecewise PCA (HMM-informed thresholds):** mean NLL ≈ **-175.041**
+- **Effective common-sample returns coverage:** **2012-05-21 → 2026-04-17**
+- **Training set:** **2421 × 24**
+- **Test set:** **1064 × 24**
 
-Relative to the global benchmark:
+## Main findings from the current executed V2 notebook
 
-- **HMM Mixture − Global:** Δ mean NLL ≈ **-0.370**
-- **Vol-mix − Global:** Δ mean NLL ≈ **-0.048**
-- **Piecewise − Global:** Δ mean NLL ≈ **+0.566**
+### 1) Validation-selected live candidate vs realized static OOS winner
 
-Secondary descriptive metric:
+These are intentionally reported separately:
 
-- **Global PCA reconstruction:** `R²_total,test ≈ 0.469`
-- **Piecewise PCA reconstruction:** `R²_total,test ≈ 0.466`
+- **Validation-selected live candidate:** **Vol-mix Corr-fixed**
+- **Best realized static OOS model (diagnostic only):** **HMM Mixture**
 
-### Bootstrap evidence
+This is a methodological feature, not a bug: the notebook does **not** use the test set for model selection.
 
-The notebook includes a moving-block bootstrap over the test period.
+### 2) Static out-of-sample performance
 
-For the HMM-mixture challenger:
+| Model | Mean NLL | Δ vs global |
+|---|---:|---:|
+| HMM Mixture (calm/stress) | **-175.978** | **-0.370** |
+| Vol-mix Corr-fixed (calm/stress) | -175.655 | -0.048 |
+| Global (static) | -175.607 | 0.000 |
+| Piecewise PCA (HMM-informed thresholds) | -175.041 | +0.566 |
 
-- **mean ΔNLL (mixture − global):** ≈ **-0.363**
-- **block-bootstrap `P(win)` vs global:** **1.00**
+Interpretation:
 
-For the vol-mix / corr-fixed challenger:
+- the **HMM mixture** is the strongest **static OOS** challenger in the current run;
+- the **Vol-mix / Corr-fixed** variant improves only modestly on the global baseline;
+- the **HMM-informed piecewise baseline** remains clearly weaker.
 
-- **mean ΔNLL (vol-mix − global):** ≈ **-0.040**
+### 3) PCA reconstruction
 
-For the piecewise PCA challenger:
+- **Global PCA \(R^2_{total,test}\):** **0.469**
+- **Piecewise PCA \(R^2_{total,test}\):** **0.466**
 
-- **mean ΔNLL (piecewise − global):** ≈ **+0.577**
+These are descriptive only; the main ranking comes from density forecasting (NLL), not reconstruction fit.
 
-### Rolling recalibration
+### 4) Block-bootstrap robustness on the static OOS test set
 
-The notebook also includes a walk-forward rolling section with periodic refits.
+The notebook uses moving-block bootstrap to preserve serial dependence in the test sample.
 
-This should be read separately from the static OOS evidence:
+#### HMM Mixture vs global
+- **Bootstrap mean ΔNLL:** **-0.3628**
+- **P(HMM beats global):** **1.00**
 
-- the **static** section asks whether a regime-aware structure contains useful information;
-- the **rolling** section asks how much of that edge survives under repeated re-estimation.
+#### Vol-mix Corr-fixed vs global
+- **Bootstrap mean ΔNLL:** **-0.0400**
+- **P(Vol-mix beats global):** **0.673**
 
-In the current executed run, the rolling global benchmark remains slightly stronger than the rolling regime-aware challengers, so the strongest evidence in the repository is still the **static OOS + bootstrap** result.
+#### Piecewise PCA vs global
+- **Bootstrap mean ΔNLL:** **+0.5975**
+- **P(Piecewise beats global):** **0.050**
+
+Interpretation:
+
+- the **static HMM result is strong and robust** in the current broad-US V2 run;
+- the **piecewise baseline is dominated**;
+- the **Vol-mix** challenger is weaker than HMM but still modestly competitive in static OOS.
+
+### 5) Rolling recalibration (walk-forward)
+
+The notebook also includes a live-style rolling refit exercise.
+
+For the current executed V2 run:
+
+| Model | Mean NLL |
+|---|---:|
+| Global rolling | **-179.422** |
+| HMM-mixture rolling | -179.398 |
+| Vol-mix Corr-fixed rolling | -179.329 |
+
+Additional rolling diagnostics:
+
+- **Δ Mean NLL (rolling HMM − rolling global):** **+0.0236**
+- **P(rolling HMM beats rolling global):** **0.133**
+- **Δ Mean NLL (rolling Vol-mix − rolling global):** **+0.0925**
+- **P(rolling Vol-mix beats rolling global):** **0.050**
+
+Interpretation:
+
+- the current notebook supports a strong **static OOS** regime-aware result;
+- the **rolling global benchmark remains slightly stronger** in the live-style exercise;
+- the project is therefore better described as a **serious research prototype** than as a finalized production-ready live selection pipeline.
 
 ## Why this project is interesting
 
-This is not just a PCA notebook. It addresses a real modelling issue that appears often in applied quant work:
+This is not just a “PCA notebook”.
+
+It addresses a real modelling problem that appears often in applied quant work:
 
 - static low-rank structure is interpretable but can miss time variation;
-- hard regime splits are simple but can create unstable middle buckets;
-- probabilistic state models offer a cleaner way to make covariance forecasts adapt over time.
+- hard regime splits are simple but often unstable;
+- probabilistic state models offer a cleaner way to make covariance forecasts adapt through time.
 
 That makes the project relevant for:
 
-- **market risk quant** roles;
-- **risk strats / quantitative risk research** roles;
-- **quantitative research** profiles with a risk-modelling angle;
-- systematic / portfolio-research roles that care about **time-varying covariance forecasts**.
+- **market risk quant** roles,
+- **risk strats / quantitative risk analytics**,
+- **quant research** roles with a risk-modelling angle,
+- **systematic / portfolio research** profiles that value regime-aware risk forecasts.
 
 ## Methodology
 
 ### 1) Data
-
-- Universe: 24 liquid US large-cap equities
-- Regime proxy: CBOE VIX (`^VIX`)
-- Returns: daily simple returns
-- Split: explicit train / test windows
+- daily adjusted-close data for 24 US large-cap equities
+- daily implied-volatility proxy (VIX)
+- explicit train / validation / test workflow
 
 ### 2) State variable
-
-The notebook builds a strictly past-looking state variable from implied volatility using:
-
-- a log transform;
-- smoothing;
+The notebook builds a past-looking state variable from implied volatility using:
+- log transform,
+- smoothing,
 - EWMA standardisation.
 
-### 3) Benchmarks and challengers
+### 3) Baselines
+- **Global baseline:** covariance estimated on the full training set with shrinkage and low-rank PCA
+- **Piecewise PCA:** low / mid / high stress buckets using **HMM-informed thresholds**
 
-- **Global model:** shrinkage covariance + low-rank PCA on the full training sample
-- **Piecewise PCA:** low / mid / high regimes defined by **HMM-informed** thresholds on the state variable
-- **HMM-mixture:** 2-state Gaussian HMM fitted on the training state series; filtered stress probabilities are then used to mix calm and stress covariance forecasts through time
-- **Vol-mix corr-fixed:** covariance scaling on volatility while keeping correlation fixed
+### 4) Main challenger
+A **2-state Gaussian HMM** is fit on the training state series.  
+The lagged filtered stress probability is then used to blend calm and stress covariance forecasts:
 
-### 4) Evaluation
+\[
+\Sigma_{t|t-1} = (1-p_{t-1})\Sigma_{\text{calm}} + p_{t-1}\Sigma_{\text{stress}}
+\]
 
-- Primary: **mean OOS Gaussian NLL**
-- Secondary: **PCA reconstruction `R²`**
-- Robustness: **moving-block bootstrap**
-- Deployment proxy: **rolling / walk-forward recalibration**
+### 5) Evaluation
+- **Primary:** mean OOS Gaussian NLL
+- **Secondary:** PCA reconstruction \(R^2\)
+- **Uncertainty:** moving-block bootstrap on daily test observations
+- **Extension:** rolling / walk-forward recalibration
 
-## Key interpretation notes
-
-A few modelling choices are worth reading carefully:
-
-- The notebook deliberately separates **validation-based selection** from **ex-post OOS ranking**.  
-  The configuration flagged as selected on validation is the live candidate chosen inside TRAIN/validation; the best realized static OOS model is reported separately for transparency only.
-- The piecewise baseline is **not** based on hard-coded quantiles.  
-  Its thresholds are selected from HMM information to produce a stronger comparator.
-- The repository is best read as a **research prototype**, not as a production library or as a final empirical paper.
-
-## Repository contents
+## Repository structure
 
 ```text
 .
 ├── README.md
-├── equity-risk-modelling-regime-aware-pca.ipynb
-├── requirements.txt            
-└── LICENSE                     
+├── requirements.txt
+├── LICENSE
+└── LMCS_Saverio_Lauriola_Equity_Risk_Modelling.ipynb
 ```
 
 ## How to run
 
-### Option A — quick start
-
 ```bash
 python -m venv .venv
-source .venv/bin/activate   # Windows: .venv\Scripts\activate
+source .venv/bin/activate  # on Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 jupyter notebook
 ```
@@ -153,28 +184,34 @@ jupyter notebook
 Then open:
 
 ```text
-equity-risk-modelling-regime-aware-pca.ipynb
+LMCS_Saverio_Lauriola_Equity_Risk_Modelling.ipynb
 ```
 
-### Option B — fixed local data
+## Reproducibility
 
-Replace the download block with local CSV inputs for:
+### Option A — quick start
+Run the notebook with `yfinance` enabled.
 
-- the equity price panel;
-- the VIX series.
+### Option B — fixed data snapshot
+Replace the data-loading block with CSV inputs for:
+- the asset price panel,
+- the IV proxy series.
 
 The repository does **not** include raw market data.
 
 ## Limitations
 
-- The current universe is a **research panel**, not a historically reconstituted index.
-- The strongest result is **static OOS**; the rolling section is more mixed.
-- The benchmark set is meaningful for a research notebook, but can be broadened further for a more paper-like comparison.
-- Exact numbers can vary slightly with data-download timing and reruns.
+- The project is **not** a production library; it is a research notebook.
+- Market data are pulled externally unless the loader is replaced with local CSV files.
+- The strongest evidence in the current V2 run is **static OOS + block-bootstrap**, not live rolling dominance.
+- The effective sample starts in **2012-05-21**, not the nominal request date of 2010-01-01.
+- Exact numeric results can vary with data-download timing and reruns.
 
-## Next steps
+## Roadmap
 
-- strengthen rolling / nested validation and model-family selection;
-- test alternative universes and broader cross-market panels;
-- compare against additional conditional covariance benchmarks;
-- separate reusable functions into modules if the repository grows.
+Natural next extensions:
+- stronger rolling model selection,
+- broader or historically reconstituted universes,
+- additional conditional covariance benchmarks,
+- cross-market validation (UK / EU / JP),
+- separation of notebook logic into reusable Python modules.
