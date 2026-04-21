@@ -134,9 +134,9 @@ A few modelling choices are worth reading carefully:
 ```text
 .
 ├── README.md
-├── LMCS_Saverio_Lauriola_Equity_Risk_Modelling_GitReady.ipynb
-├── requirements.txt            # optional, if you maintain one
-└── LICENSE                     # optional, if you maintain one
+├── equity-risk-modelling-regime-aware-pca.ipynb
+├── requirements.txt            
+└── LICENSE                     
 ```
 
 ## How to run
@@ -153,7 +153,7 @@ jupyter notebook
 Then open:
 
 ```text
-LMCS_Saverio_Lauriola_Equity_Risk_Modelling_GitReady.ipynb
+equity-risk-modelling-regime-aware-pca.ipynb
 ```
 
 ### Option B — fixed local data
