@@ -172,7 +172,7 @@ The repository does **not** include raw market data.
 - The benchmark set is meaningful for a research notebook, but can be broadened further for a more paper-like comparison.
 - Exact numbers can vary slightly with data-download timing and reruns.
 
-## Suggested next steps
+## Next steps
 
 - strengthen rolling / nested validation and model-family selection;
 - test alternative universes and broader cross-market panels;
