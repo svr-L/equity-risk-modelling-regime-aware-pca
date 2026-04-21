@@ -169,7 +169,7 @@ The lagged filtered stress probability is then used to blend calm and stress cov
 ├── README.md
 ├── requirements.txt
 ├── LICENSE
-└── LMCS_Saverio_Lauriola_Equity_Risk_Modelling.ipynb
+└── equity-risk-modelling-regime-aware-pca.ipynb
 ```
 
 ## How to run
@@ -184,7 +184,7 @@ jupyter notebook
 Then open:
 
 ```text
-LMCS_Saverio_Lauriola_Equity_Risk_Modelling.ipynb
+equity-risk-modelling-regime-aware-pca.ipynb
 ```
 
 ## Reproducibility
