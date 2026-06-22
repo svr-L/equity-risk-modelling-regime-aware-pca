@@ -204,28 +204,6 @@ Gaussian and multivariate Student-t likelihoods are evaluated with full normalis
 
 ---
 
-## Resume bullets
-
-### Market Risk Quant / Risk Strats
-
-```latex
-\item \href{https://github.com/svr-L/equity-risk-modelling-regime-aware-pca}{Built a 24-stock US equity risk-forecasting framework benchmarking PCA/HMM regimes, eigenstructure states, and shrinkage EWMA covariance models under Gaussian vs Student-$t$ density scoring; found that heavy tails ($\hat{\nu}\approx5$) and long-memory EWMA ($\lambda\approx0.9925$) dominated regime variants, with moving-block bootstrap and VaR/ES backtests supporting the final risk model} \href{https://github.com/svr-L/equity-risk-modelling-regime-aware-pca}{\textbf{(repo)}};
-```
-
-### Equity QR / portfolio research
-
-```latex
-\item \href{https://github.com/svr-L/equity-risk-modelling-regime-aware-pca}{Developed an empirical US equity risk-model selection framework for 24 large-cap stocks, comparing PCA factor risk models, VIX/HMM regimes, eigenstructure states, shrinkage EWMA covariance forecasts, Student-$t$ scoring, and Kalman-filtered factor premia; showed that tail modelling and long-memory covariance updates drive OOS risk performance more robustly than regime or one-day mean-forecast variants} \href{https://github.com/svr-L/equity-risk-modelling-regime-aware-pca}{\textbf{(repo)}};
-```
-
-### Short general quant version
-
-```latex
-\item \href{https://github.com/svr-L/equity-risk-modelling-regime-aware-pca}{Built a 24-stock US equity risk-forecasting framework comparing PCA, VIX/HMM regimes, eigenstructure states, EWMA covariance, Student-$t$ scoring, and Kalman factor premia; heavy tails and long-memory covariance updates dominated regime and one-day mean-forecast variants, with bootstrap and VaR/ES tests supporting the final model} \href{https://github.com/svr-L/equity-risk-modelling-regime-aware-pca}{\textbf{(repo)}};
-```
-
----
-
 ## Roadmap
 
 - Re-run on multi-asset universes where correlation sign/shape regimes should matter more.
