@@ -1,213 +1,146 @@
-# Equity Risk Modelling — Regime-Aware PCA, Heavy Tails, EWMA, and Kalman Factor Premia
+# Multi-Asset Scenario Engine
 
-Out-of-sample **equity covariance / density forecasting** for a panel of **24 US large-cap equities**.
+A modular Python research prototype for joint US equity-rates-credit-FX scenario generation under the physical measure, horizon repricing, and portfolio tail-risk analysis.
 
-The project started as a regime-aware PCA risk-modelling study and evolved into a broader empirical model-selection exercise: VIX/HMM regimes, eigenstructure states, shrinkage EWMA covariance, Gaussian vs Student-t scoring, VaR/ES tail validation, and an optional Kalman-filtered factor-premia layer.
-
----
-
-## TL;DR — final run
-
-The robust out-of-sample findings are:
-
-1. **Heavy tails matter most.** A Student-t likelihood with \(\hat\nu \approx 5\) materially improves one-day density forecasts versus Gaussian scoring.
-2. **Long-memory shrinkage EWMA is the best covariance model.** The fine grid selects memory mainly around \(\lambda = 0.99\)–\(0.9925\), with `ewma_0.9925` the best fixed-lambda model in the final run.
-3. **Regime models are informative but not the robust winner.** The VIX/HMM calm-stress mixture beats the static global baseline on the fixed static OOS split, but does not survive as a clean walk-forward/live claim.
-4. **Eigenstructure/adaptive-memory regimes are dominated after controls.** Apparent adaptive gains are explained by memory length rather than true eigenstructure timing.
-5. **Kalman-filtered PCA factor premia do not add one-day density value.** The expected-return overlay is tested and kept as a negative/diagnostic Equity QR result: at this horizon, the signal is in covariance and tails, not daily mean forecasts.
-
-The final model is therefore best read as a **risk / density-forecasting engine**, not an alpha model.
-
----
-
-## Repository contents
+The project is designed as a lightweight market-risk / risk-strat engine rather than a point-forecasting notebook. It follows the pipeline:
 
 ```text
-.
-├── README.md
-└── equity-risk-modelling-regime-aware-pca.ipynb
+market data -> risk drivers -> joint scenarios -> horizon repricing -> portfolio tail risk
 ```
 
-Raw market data are not included. The notebook can run with `yfinance` or be adapted to local CSV inputs.
+## Current stable release
 
----
+The current public release focuses on a **one-week cross-asset horizon**. The engine models a broad US equity universe, the US Treasury curve, credit rating-bucket OAS spreads, and EUR/USD FX spot in a single joint state. Simulated states are mapped back into instrument values and portfolio losses.
 
-## Universe and sample
+The stable default is a **joint stationary block bootstrap** of the cross-asset state. A VAR(1) model is also fitted and reported as a diagnostic / challenger, but the block-bootstrap engine is the default because it is more parsimonious for the short horizon and preserves empirical cross-asset dependence.
 
-- **Universe:** 24 US large-cap equities  
-  `AAPL, MSFT, NVDA, ORCL, GOOGL, META, AMZN, HD, WMT, PG, KO, JPM, BRK-B, V, LLY, JNJ, UNH, XOM, CVX, CAT, RTX, LIN, NEE, AMT`
-- **Regime proxy:** VIX (`^VIX`)
-- **Low-rank factors:** \(k=3\)
-- **Sample requested:** from 2010-01-01 onward
-- **Effective common sample:** starts on **2012-05-21**, due to the intersection of histories across the stock panel and VIX
-- **Test window:** **2022-01-01 → 2026-03-31**, consistently enforced in the final run
+## What the notebook does
 
-Absolute NLL levels are not comparable across all notebook sections because earlier Part A reports Gaussian NLL up to an additive constant, while later sections use full normalising constants and trailing-window forecasts. Rankings and deltas should be read **within** each section.
+### 1. Data layer
 
----
+The notebook downloads and aligns:
 
-## Part A — VIX/HMM regime-aware PCA
+- adjusted-close prices for a multi-sector US equity universe;
+- a broad US equity market proxy;
+- a 10-tenor US Treasury key-rate curve from FRED;
+- daily Fama-French / Carhart factors;
+- ICE BofA option-adjusted spreads across rating buckets from AAA to CCC;
+- EUR/USD spot from FRED;
+- Moody's Aaa/Baa yields for optional crisis-tail calibration.
 
-The original study compares:
+### 2. Risk-driver blocks
 
-- global/static low-rank PCA covariance;
-- HMM-informed piecewise PCA;
-- a 2-state VIX/HMM calm-stress covariance mixture;
-- a Vol-mix / Corr-fixed challenger.
+The engine builds modular risk-driver blocks:
 
-### Static OOS performance
+- **Equity:** selectable equity-premium engines (`latent_statistical`, `proxy_market`, `apt_ff3`, `apt_carhart`) plus compressed idiosyncratic residual factors;
+- **Rates:** PCA factors from daily Treasury key-rate changes;
+- **Credit:** PCA factors from rating-bucket OAS changes, with a parsimony cap to avoid near-degenerate credit dimensions;
+- **FX:** currency-pair log-return factors.
 
-| Model | Mean NLL | Δ vs global |
-|---|---:|---:|
-| HMM Mixture (calm/stress) | **−175.978** | **−0.370** |
-| Vol-mix Corr-fixed | −175.655 | −0.048 |
-| Global (static) | −175.607 | 0.000 |
-| Piecewise PCA (HMM thresholds) | −175.041 | +0.566 |
+All blocks are stacked into a single joint state so that equity/rates/credit/FX co-movements are simulated jointly rather than imposed after the fact.
 
-### Static block-bootstrap robustness
+### 3. Joint scenario generation
 
-| Comparison | Bootstrap mean ΔNLL | P(beats global) |
-|---|---:|---:|
-| HMM Mixture − global | −0.363 | **1.00** |
-| Vol-mix − global | −0.040 | 0.673 |
-| Piecewise − global | +0.598 | 0.05 |
+The stable one-week engine uses a stationary block bootstrap of the joint state. This keeps the model parsimonious and preserves empirical cross-asset dependence. The notebook also fits a VAR(1), reports stability diagnostics, and measures one-step explanatory power to assess whether parametric mean dynamics add value.
 
-### Walk-forward recalibration
+### 4. Horizon repricing
 
-| Model | Mean NLL |
-|---|---:|
-| Global rolling | **−179.422** |
-| HMM-mixture rolling | −179.398 |
-| Vol-mix rolling | −179.329 |
+The simulated risk-driver states are translated into one-week horizon values for:
 
-`P(rolling HMM beats rolling global) = 0.133`.
+- equities;
+- a synthetic semi-annual coupon Treasury note;
+- corporate bonds priced from Treasury zero rates plus simulated rating-bucket OAS;
+- a fully-funded EUR/USD forward.
 
-**Reading:** the HMM static edge is real on the fixed split, but not robust as a walk-forward/live model-selection result.
+This makes the notebook closer to a small cross-asset horizon-repricing engine than to a pure return-simulation exercise.
 
----
+### 5. Portfolio tail-risk analytics
 
-## Part B — heavy tails, EWMA, and eigenstructure tests
+The portfolio layer uses capital-normalized instrument returns and computes:
 
-The extended investigation tests progressively fairer benchmarks and mechanisms:
+- portfolio VaR and Expected Shortfall;
+- weighted tail contributions;
+- illustrative benchmark portfolios;
+- long-only minimum-CVaR weights via the Rockafellar-Uryasev linear-programming formulation;
+- a fresh-draw out-of-sample scenario check for tail-risk optimism.
 
-- Gaussian vs Student-t likelihood;
-- fixed-lambda shrinkage EWMA covariance;
-- eigenstructure regimes via absorption ratio and PCA-subspace rotation;
-- adaptive-memory covariance models;
-- Marchenko-Pastur / RMT diagnostics;
-- confound controls against fixed-lambda EWMA.
+### 6. Validation
 
-### Fine-grid EWMA / Student-t result
+The notebook includes distributional and dependence diagnostics:
 
-The final fine grid tests:
+- simulated vs historical one-week risk scaling;
+- equity tail behaviour;
+- cross-equity correlation preservation;
+- equity-rates, equity-credit, and equity-FX dependence checks;
+- credit-spread scaling by rating bucket;
+- walk-forward VaR coverage using Kupiec and Christoffersen tests;
+- PIT / rank diagnostics.
 
-```python
-[0.90, 0.93, 0.95, 0.97, 0.98, 0.985,
- 0.990, 0.9925, 0.995, 0.9975, 0.999]
-```
+## Crisis-tail overlay
 
-Selected lambda frequencies in the final run:
+The common equity/rates/credit/FX sample is constrained by recent ICE BofA OAS availability and is relatively calm. To avoid pretending that a calm sample contains crisis tails, the notebook includes an **optional** crisis-tail overlay calibrated from long-history Moody's Baa/Aaa spread behaviour.
 
-| selected λ | Frequency |
-|---:|---:|
-| 0.9850 | 0.098 |
-| 0.9900 | 0.333 |
-| 0.9925 | 0.569 |
+The default configuration leaves the calm-sample engine unchanged. Turning the crisis overlay on deliberately fattens the simulated tail and should be interpreted as a stress mode, not as the baseline calibration.
 
-Student-t ranking:
+## Current scope and limitations
 
-| Model | NLL_t | Δ vs global |
-|---|---:|---:|
-| `ewma_0.9925` | **−70.7799** | **−0.5929** |
-| `ewma_0.99` | −70.7628 | −0.5758 |
-| `ewma_selected` | −70.7543 | −0.5673 |
-| `ewma_0.995` | −70.7504 | −0.5634 |
-| `global` | −70.1870 | 0.0000 |
+This is a research prototype, not a production risk system. Important limitations:
 
-**Reading:** the best memory is long but not static; \(0.99\)–\(0.9925\) is the stable region, while \(0.999\) drifts too close to the static limit.
-
----
-
-## Market-risk capstone — VaR / ES backtest
-
-The final risk model is also evaluated on equal-weight portfolio VaR/ES at 1% and 2.5%, comparing Gaussian vs Student-t.
-
-Key 1% results:
-
-| Model | Likelihood | Hit rate | Kupiec p_uc | ES hit ratio |
-|---|---|---:|---:|---:|
-| `ewma_selected` | Gaussian | 1.32% | 0.323 | 1.177 |
-| `ewma_selected` | Student-t | **1.03%** | **0.912** | **0.948** |
-| `ewma_0.9925` | Gaussian | 1.32% | 0.323 | 1.196 |
-| `ewma_0.9925` | Student-t | **1.13%** | **0.681** | **0.940** |
-
-**Reading:** Student-t materially improves 1% tail calibration and ES severity. The 2.5% conditional-coverage diagnostics are less clean, so the conservative claim is tail-risk improvement rather than perfect tail validation.
-
----
-
-## Section 21 — Kalman-filtered PCA factor premia
-
-The optional Equity QR extension tests whether a low-dimensional expected-return layer adds value beyond the final covariance/tail-risk engine.
-
-Method:
-
-- extract the top \(k=3\) PCA factor returns inside each trailing calibration window;
-- estimate latent factor expected returns with a diagonal Kalman filter;
-- select \(\phi\), process-noise scale \(q\), and mean-shrink on an internal validation slice;
-- map filtered factor premia back to asset-level expected returns;
-- compare Kalman mean overlay versus the same covariance model without the overlay.
-
-Final result:
-
-| Base covariance | NLL_t Kalman | NLL_t base | Δ Kalman − base | P(Kalman beats base) |
-|---|---:|---:|---:|---:|
-| `ewma_0.9925` | −70.77884 | **−70.77989** | +0.00105 | 0.220 |
-| `ewma_selected` | −70.75321 | **−70.75430** | +0.00109 | 0.213 |
-
-**Reading:** the Kalman mean layer does **not** add one-day density-forecast value. This is a useful negative result for Equity QR: on this panel and horizon, expected-return dynamics are too weak/noisy to improve OOS density scoring beyond the covariance/tail engine.
-
----
-
-## Methodology
-
-### Data
-Daily adjusted-close returns for 24 US large-cap equities and daily VIX proxy.
-
-### Likelihoods
-Gaussian and multivariate Student-t likelihoods are evaluated with full normalising constants in the final walk-forward sections. The Student-t scale matrix is set so that the covariance target is comparable to the Gaussian covariance target.
-
-### Covariance models
-- Global/static shrinkage covariance.
-- Low-rank PCA covariance models.
-- VIX/HMM calm-stress covariance mixtures.
-- Eigenstructure-state covariance variants.
-- Shrinkage EWMA covariance with validation-selected and fixed lambda grids.
-
-### Evaluation
-- Mean OOS NLL.
-- Moving-block bootstrap of daily NLL differences.
-- Walk-forward monthly refits on trailing 5-year windows.
-- VaR/ES coverage and exceedance-severity diagnostics.
-- Kalman mean overlay tested against identical covariance/tail baselines.
-
----
-
-## Limitations
-
-- Research notebook, not a production library.
-- Single 24-stock US large-cap panel, survivorship-selected using current constituents.
-- One-day horizon only.
-- Single post-2022 test path.
-- No raw data snapshot included.
-- Regime/eigenstructure conclusions are specific to this equity panel; multi-asset universes may behave differently.
-- Kalman factor premia are tested only as one-day density mean overlays, not as standalone alpha or allocation signals.
-
----
+- the credit block is a rating-bucket OAS curve, not a full maturity-by-rating credit surface;
+- corporate bonds are repriced using a flat rating OAS added to the Treasury curve;
+- the public FRED ICE BofA OAS sample may be limited to a recent rolling window;
+- the FX block is intentionally light, currently configured with EUR/USD;
+- the default public release focuses on a one-week market-risk horizon;
+- longer-horizon credit migration/default modelling is treated as a separate research extension.
 
 ## Roadmap
 
-- Re-run on multi-asset universes where correlation sign/shape regimes should matter more.
-- Test multi-day horizons, where regime persistence and factor premia may be more relevant.
-- Add point-in-time / survivorship-free universes.
-- Connect the final risk engine to portfolio construction: volatility targeting, min-variance, risk parity, and mean-variance allocation with turnover and transaction-cost diagnostics.
-- Refactor notebook logic into reusable Python modules.
+Planned extensions include:
+
+1. refactoring the notebook into reusable modules under `src/`;
+2. adding a separate one-year credit migration/default extension with block-specific long-horizon dynamics;
+3. introducing mean-reverting dynamics for rates and credit spreads at longer horizons;
+4. expanding FX and credit instrument coverage;
+5. adding stronger rolling validation and ablation tables across alternative dynamics;
+6. separating stable mainline notebooks from experimental research branches.
+
+## Requirements
+
+Typical packages used by the notebook:
+
+- numpy
+- pandas
+- matplotlib
+- scikit-learn
+- statsmodels
+- scipy
+- yfinance
+- pandas-datareader
+
+Install with:
+
+```bash
+pip install -r requirements.txt
+```
+
+## How to run
+
+1. Clone the repository.
+2. Install the required packages.
+3. Open `multi_asset_scenario_engine.ipynb`.
+4. Run all cells in order.
+
+The notebook downloads market data live, so internet access is required.
+
+## Repository structure
+
+```text
+.
+├── multi_asset_scenario_engine.ipynb
+├── README.md
+└── requirements.txt
+```
+
+## Author
+
+Saverio Lauriola
